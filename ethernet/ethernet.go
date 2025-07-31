@@ -12,6 +12,10 @@ const (
 	IPv4 uint16 = 0x0800
 )
 
+type Ethernet struct {
+	// TODO подумать над наполнением, точно должен быть канал
+}
+
 type EthernetFrame struct {
 	MacDst    [6]byte
 	MacSrc    [6]byte
@@ -79,26 +83,10 @@ func Padding(data *[]byte) {
 	*data = append(*data, padding...)
 }
 
-func (ef *EthernetFrame) GetFrame() error {
-	const op = "ethernet.GetFrame"
-	switch ef.EtherType {
-	case ARP:
-		res, err := arp.Unmarshal(ef.Payload)
-		if err != nil {
-			return fmt.Errorf("%s: %w", op, err)
-		}
-		err = res.CheckOperation()
-		if err != nil {
-			return fmt.Errorf("%s: %w", op, err)
-		}
-	case IPv4:
-		// TODO
-	}
-
-	return nil
+func (e *Ethernet) GetFrame() error {
 
 }
 
-func (ef *EthernetFrame) SendFrame() {
+func (e *Ethernet) SendFrame(payload []byte) {
 
 }

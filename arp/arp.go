@@ -36,7 +36,7 @@ func New(operation uint16, srcmac [6]byte, srcip [4]byte, dstmac [6]byte, dstip 
 	}
 }
 
-func (ap ARPPackage) Marshal() []byte {
+func (ap *ARPPackage) Marshal() []byte {
 	pack := make([]byte, 28)
 
 	buf := make([]byte, 2)
@@ -89,22 +89,13 @@ func Unmarshal(data []byte) (ARPPackage, error) {
 	return ap, nil
 }
 
-func (ap ARPPackage) CheckOperation() error {
-	switch ap.Operation {
-	case ARPRequest:
-		Request()
-	case ARPReply:
-		Reply()
-	default:
-		return fmt.Errorf("unknown operation")
-	}
-	return nil
+func HandleOperation() (ARPPackage, error) {
+	// TODO выбор функции в зависимости от Operation
 }
 
-func Request() ARPPackage {
-
+func (ap ARPPackage) Request() ARPPackage {
 }
 
-func Reply() ARPPackage {
+func (ap ARPPackage) Reply() ARPPackage {
 
 }
