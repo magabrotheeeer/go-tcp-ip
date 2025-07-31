@@ -1,10 +1,15 @@
 package ethernet // Ethernet II (IEEE 802.3)
-import "encoding/binary"
+import (
+	"encoding/binary"
+	"fmt"
+
+	"github.com/magabrotheeeer/go-tcp-ip/arp"
+)
 
 const (
-	Test uint16 = 0XDEAD
-	ARP           uint16 = 0x0806
-	IPv4          uint16 = 0x0800
+	Test uint16 = 0xDEAD
+	ARP  uint16 = 0x0806
+	IPv4 uint16 = 0x0800
 )
 
 type EthernetFrame struct {
@@ -16,10 +21,10 @@ type EthernetFrame struct {
 
 // TODO - работа с интерфейсом, TAP
 
-func New(dst [6]byte, src [6]byte, protocol string,  data []byte) EthernetFrame {
+func New(dst [6]byte, src [6]byte, protocol string, data []byte) EthernetFrame {
 	var pr uint16
 	switch protocol {
-	case "ip": 
+	case "ip":
 		pr = IPv4
 	case "arp":
 		pr = ARP
@@ -63,13 +68,37 @@ func Unmarshal(frame []byte) EthernetFrame {
 	ef.EtherType = binary.BigEndian.Uint16(buf)
 
 	ef.Payload = frame[14:]
+
 	return ef
 }
 
 func Padding(data *[]byte) {
 	length := len(*data)
-	padLen := 46  - length
+	padLen := 46 - length
 	padding := make([]byte, padLen)
 	*data = append(*data, padding...)
 }
 
+func (ef *EthernetFrame) GetFrame() error {
+	const op = "ethernet.GetFrame"
+	switch ef.EtherType {
+	case ARP:
+		res, err := arp.Unmarshal(ef.Payload)
+		if err != nil {
+			return fmt.Errorf("%s: %w", op, err)
+		}
+		err = res.CheckOperation()
+		if err != nil {
+			return fmt.Errorf("%s: %w", op, err)
+		}
+	case IPv4:
+		// TODO
+	}
+
+	return nil
+
+}
+
+func (ef *EthernetFrame) SendFrame() {
+
+}
