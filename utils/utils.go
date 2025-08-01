@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"bytes"
 	"net"
 )
 
@@ -24,7 +25,7 @@ func GetInterfaceIPs(name string) ([]net.IP, error) {
 		case *net.IPAddr:
 			ip = v.IP
 		}
-		// Фильтруем только IPv4-адреса (можно убрать if для IPv6)
+		// Фильтруем только IPv4-адреса
 		if ip.To4() != nil {
 			ips = append(ips, ip.To4())
 		}
@@ -33,10 +34,14 @@ func GetInterfaceIPs(name string) ([]net.IP, error) {
 }
 
 func IsMyIP(target [4]byte, myIPs []net.IP) bool {
-    for _, ip := range myIPs {
-        if len(ip) == 4 && ip[0] == target[0] && ip[1] == target[1] && ip[2] == target[2] && ip[3] == target[3] {
-            return true
-        }
-    }
-    return false
+	for _, ip := range myIPs {
+		if len(ip) == 4 && ip[0] == target[0] && ip[1] == target[1] && ip[2] == target[2] && ip[3] == target[3] {
+			return true
+		}
+	}
+	return false
+}
+
+func IsBroadcast(mac []byte) bool {
+	return bytes.Equal(mac, []byte{0xff, 0xff, 0xff, 0xff, 0xff, 0xff})
 }
