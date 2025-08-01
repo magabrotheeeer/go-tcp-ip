@@ -2,9 +2,14 @@ package main
 
 import (
 	"fmt"
+	"log"
+	"net"
 	"os"
 	"syscall"
 	"unsafe"
+
+	"github.com/magabrotheeeer/go-tcp-ip/arp"
+	"github.com/magabrotheeeer/go-tcp-ip/ethernet"
 )
 
 const (
@@ -44,24 +49,42 @@ func main() {
 
 	fd, err := openTAP("tap0")
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 		os.Exit(1)
 	}
 	defer fd.Close()
-	fmt.Println("file is open")
+	log.Println("file is open")
+
+	iface, err := net.InterfaceByName("tap0")
+	if err != nil {
+		log.Println(err)
+		os.Exit(1)
+	}
 
 	ch := make(chan []byte)
 
-	// для приема frame
-	go func {
+	arpCache := arp.NewARPCache()
 
-	}
+	ether := ethernet.NewEthernet(fd, ch, iface.HardwareAddr, arpCache)
+
+	// для приема frame
+	go func() {
+		buf := make([]byte, 2048)
+		for {
+			n, err := fd.Read(buf)
+			if err != nil {
+				log.Println("tap read error:", err)
+				continue
+			}
+			go ether.HandleFrame(buf[:n])
+		}
+
+	}()
 
 	// для отправки
-	go func {
+	go func() {
 
-	}
+	}()
 
-
-	select{}
+	select {}
 }
