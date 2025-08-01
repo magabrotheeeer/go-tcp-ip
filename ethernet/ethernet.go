@@ -1,9 +1,13 @@
 package ethernet // Ethernet II (IEEE 802.3)
 import (
+	"bytes"
 	"encoding/binary"
-	"fmt"
+	"log"
+	"net"
+	"os"
 
 	"github.com/magabrotheeeer/go-tcp-ip/arp"
+	"github.com/magabrotheeeer/go-tcp-ip/utils"
 )
 
 const (
@@ -13,7 +17,10 @@ const (
 )
 
 type Ethernet struct {
-	// TODO подумать над наполнением, точно должен быть канал
+	Tap   *os.File
+	Ch    chan []byte
+	MyMAC net.HardwareAddr
+	Cache *arp.ARPCache
 }
 
 type EthernetFrame struct {
@@ -23,9 +30,18 @@ type EthernetFrame struct {
 	Payload   []byte // если меньше 46 байт, то используется поле-заполнитель для предотвращения коллизий
 }
 
+func NewEthernet(tap *os.File, ch chan []byte, mymac net.HardwareAddr, cache *arp.ARPCache) Ethernet {
+	return Ethernet{
+		Tap:   tap,
+		Ch:    ch,
+		MyMAC: mymac,
+		Cache: cache,
+	}
+}
+
 // TODO - работа с интерфейсом, TAP
 
-func New(dst [6]byte, src [6]byte, protocol string, data []byte) EthernetFrame {
+func NewEthernetFrame(dst [6]byte, src [6]byte, protocol string, data []byte) EthernetFrame {
 	var pr uint16
 	switch protocol {
 	case "ip":
@@ -83,10 +99,28 @@ func Padding(data *[]byte) {
 	*data = append(*data, padding...)
 }
 
-func (e *Ethernet) GetFrame() error {
+func (e *Ethernet) HandleFrame(frame []byte) {
+	etherframe := Unmarshal(frame)
 
-}
+	if !bytes.Equal(e.MyMAC, etherframe.MacDst[:]) && !utils.IsBroadcast(etherframe.MacDst[:]) {
+		return
+	}
 
-func (e *Ethernet) SendFrame(payload []byte) {
+	switch etherframe.EtherType {
+	case ARP:
+		arpPack, err := arp.Unmarshal(etherframe.Payload)
+		if err != nil {
+			log.Println(err.Error())
+			return
+		}
+		newArp, err := arp.HandleARP(arpPack, e.Cache)
+
+		resData := newArp.Marshal()
+
+		e.Ch <- resData
+
+	case IPv4:
+		// TODO
+	}
 
 }
