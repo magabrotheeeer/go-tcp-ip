@@ -39,8 +39,6 @@ func NewEthernet(tap *os.File, ch chan []byte, mymac net.HardwareAddr, cache *ar
 	}
 }
 
-// TODO - работа с интерфейсом, TAP
-
 func NewEthernetFrame(dst [6]byte, src [6]byte, protocol string, data []byte) EthernetFrame {
 	var pr uint16
 	switch protocol {
