@@ -3,6 +3,8 @@ package arp
 import (
 	"encoding/binary"
 	"fmt"
+
+	"github.com/magabrotheeeer/go-tcp-ip/utils"
 )
 
 const (
@@ -22,7 +24,7 @@ type ARPPackage struct {
 	DstIp           [4]byte
 }
 
-func New(operation uint16, srcmac [6]byte, srcip [4]byte, dstmac [6]byte, dstip [4]byte) ARPPackage {
+func NewARPPackage(operation uint16, srcmac [6]byte, srcip [4]byte, dstmac [6]byte, dstip [4]byte) ARPPackage {
 	return ARPPackage{
 		HardwareType:    0x0001,
 		ProtocolType:    0x0800,
@@ -89,13 +91,48 @@ func Unmarshal(data []byte) (ARPPackage, error) {
 	return ap, nil
 }
 
-func HandleOperation() (ARPPackage, error) {
-	// TODO выбор функции в зависимости от Operation
+func HandleARP(pack ARPPackage, cache *ARPCache) (*ARPPackage, error) {
+	var res ARPPackage
+	var err error
+	switch pack.Operation {
+	case ARPRequest:
+		res, err = pack.BuildReply()
+		if err != nil {
+			return nil, err
+		}
+		return &res, nil
+	case ARPReply:
+		pack.UpdateData(cache)
+		return nil, nil
+	default:
+		return nil, fmt.Errorf("unknown operation %d", pack.Operation)
+	}
+
 }
 
-func (ap ARPPackage) Request() ARPPackage {
+func (ap ARPPackage) BuildReply() (ARPPackage, error) {
+	targetIP := ap.DstIp
+
+	list, err := utils.GetInterfaceIPs("tap0")
+	if err != nil {
+		return ARPPackage{}, err
+	}
+	if !utils.IsMyIP(targetIP, list) {
+		return ARPPackage{}, nil
+	}
+	res := NewARPPackage(2, ap.DstMac, ap.DstIp, ap.SrcMac, ap.SrcIp)
+
+	return res, nil
 }
 
-func (ap ARPPackage) Reply() ARPPackage {
+// TODO критический момент
+func (ap ARPPackage) UpdateData(cache *ARPCache) {
+	senderIp := ap.SrcIp
+	senderMac := ap.SrcMac
+
+	stringSenderIp := fmt.Sprintf("%d.%d.%d.%d",
+		senderIp[0], senderIp[1], senderIp[2], senderIp[3])
+
+	cache.Add(stringSenderIp, senderMac[:])
 
 }
