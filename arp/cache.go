@@ -10,12 +10,6 @@ func NewARPCache() *ARPCache {
 	}
 }
 
-type ManagerCache interface {
-	Add(ip string, mac []byte) bool
-	Get(ip string) ([]byte, bool)
-	Remove (ip string)
-}
-
 func (ac *ARPCache) Add(ip string, mac []byte) bool {
 	if len(mac) != 6 {
 		return false
@@ -24,7 +18,6 @@ func (ac *ARPCache) Add(ip string, mac []byte) bool {
 
 	return true
 }
-
 
 func (ac *ARPCache) Get(ip string) ([]byte, bool) {
 	res, ok := ac.cache[ip]
@@ -35,3 +28,4 @@ func (ac *ARPCache) Get(ip string) ([]byte, bool) {
 func (ac *ARPCache) Remove(ip string) {
 	delete(ac.cache, ip)
 }
+
