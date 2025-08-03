@@ -113,9 +113,11 @@ func (e *Ethernet) HandleFrame(frame []byte) {
 		}
 		newArp, err := arp.HandleARP(arpPack, e.Cache)
 
-		resData := newArp.Marshal()
+		if newArp != nil {
+			resData := newArp.Marshal()
 
-		e.Ch <- resData
+			e.Ch <- resData
+		}
 
 	case IPv4:
 		// TODO
