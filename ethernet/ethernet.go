@@ -11,25 +11,26 @@ import (
 )
 
 const (
-	Test uint16 = 0xDEAD
-	ARP  uint16 = 0x0806
-	IPv4 uint16 = 0x0800
+	Test uint16 = 0xDEAD // тест для нахождения своего frame
+	ARP  uint16 = 0x0806 // arp-протокол
+	IPv4 uint16 = 0x0800 // ip-протокол
 )
 
 type Ethernet struct {
-	Tap   *os.File
-	Ch    chan []byte
-	MyMAC net.HardwareAddr
-	Cache *arp.ARPCache
+	Tap   *os.File         // дескриптор файла
+	Ch    chan []byte      // канал для передачи фреймов
+	MyMAC net.HardwareAddr // mac устройства
+	Cache *arp.ARPCache    // arp-cache
 }
 
 type EthernetFrame struct {
-	DstMac    [6]byte
-	SrcMac    [6]byte
-	EtherType uint16
-	Payload   []byte // если меньше 46 байт, то используется поле-заполнитель для предотвращения коллизий
+	DstMac    [6]byte // получатель
+	SrcMac    [6]byte // отправитель
+	EtherType uint16  // ip, test, arp
+	Payload   []byte  // если меньше 46 байт, то используется поле-заполнитель для предотвращения коллизий
 }
 
+// создает новый ethernet
 func NewEthernet(tap *os.File, ch chan []byte, mymac net.HardwareAddr, cache *arp.ARPCache) Ethernet {
 	return Ethernet{
 		Tap:   tap,
@@ -39,6 +40,7 @@ func NewEthernet(tap *os.File, ch chan []byte, mymac net.HardwareAddr, cache *ar
 	}
 }
 
+// создает новый ethernetframe
 func NewEthernetFrame(dst [6]byte, src [6]byte, protocol string, data []byte) EthernetFrame {
 	var pr uint16
 	switch protocol {
@@ -58,6 +60,7 @@ func NewEthernetFrame(dst [6]byte, src [6]byte, protocol string, data []byte) Et
 	}
 }
 
+// приводит ethernetframe в слайс байт
 func (ef *EthernetFrame) Marshal() []byte {
 	frame := []byte{}
 	buf := make([]byte, 2)
@@ -76,6 +79,7 @@ func (ef *EthernetFrame) Marshal() []byte {
 	return frame
 }
 
+// приводит слайс байт в ethernetframe
 func Unmarshal(frame []byte) EthernetFrame {
 	var ef EthernetFrame
 
@@ -90,6 +94,7 @@ func Unmarshal(frame []byte) EthernetFrame {
 	return ef
 }
 
+// заполняет payload нулями
 func Padding(data *[]byte) {
 	length := len(*data)
 	padLen := 46 - length
@@ -97,6 +102,7 @@ func Padding(data *[]byte) {
 	*data = append(*data, padding...)
 }
 
+// обрабатывает ethernet frame
 func (e *Ethernet) HandleFrame(frame []byte) {
 	etherframe := Unmarshal(frame)
 
@@ -115,7 +121,7 @@ func (e *Ethernet) HandleFrame(frame []byte) {
 
 		if newArp != nil {
 			respondArp := newArp.Marshal()
-			nef := NewEthernetFrame(newArp.DstMac, newArp.SrcMac, "arp", respondArp)	
+			nef := NewEthernetFrame(newArp.DstMac, newArp.SrcMac, "arp", respondArp)
 			respondFrame := nef.Marshal()
 			e.Ch <- respondFrame
 		}
@@ -123,5 +129,4 @@ func (e *Ethernet) HandleFrame(frame []byte) {
 	case IPv4:
 		// TODO
 	}
-
 }

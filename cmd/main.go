@@ -10,12 +10,14 @@ import (
 
 	"github.com/magabrotheeeer/go-tcp-ip/arp"
 	"github.com/magabrotheeeer/go-tcp-ip/ethernet"
+	"golang.org/x/sys/unix"
 )
 
 const (
-	TUNSETIFF = 0x400454ca // создание или привязка дескриптора к TUN/TAP интерфейсу с заданным именем и параметрами
-	IFF_TAP   = 0x0002     // создается или открывается устройство TAP, а не TUN
-	IFF_NO_PI = 0x1000     // получаем чистый кадр, без заголовков
+	TUNSETIFF        = 0x400454ca // создание или привязка дескриптора к TUN/TAP интерфейсу с заданным именем и параметрами
+	IFF_TAP          = 0x0002     // создается или открывается устройство TAP, а не TUN
+	IFF_NO_PI        = 0x1000     // получаем чистый кадр, без заголовков
+	INTERFACE_NUMBER = "tar0"
 )
 
 type ifreq struct {
@@ -24,6 +26,7 @@ type ifreq struct {
 	Pad   [22]byte // буфер заполнения для выравнивания
 }
 
+// открывает и настраивает TAP интерфейс
 func openTAP(name string) (*os.File, error) {
 	const op = "cmd.openTap"
 
@@ -36,8 +39,12 @@ func openTAP(name string) (*os.File, error) {
 	copy(req.Name[:], name)
 	req.Flags = IFF_NO_PI | IFF_TAP
 
-	_, _, err = syscall.Syscall(syscall.SYS_IOCTL, fd.Fd(),
-		uintptr(TUNSETIFF), uintptr(unsafe.Pointer(&req)))
+	_, _, err = syscall.Syscall(
+		unix.SYS_IOCTL,
+		fd.Fd(),
+		uintptr(TUNSETIFF),
+		uintptr(unsafe.Pointer(&req)),
+	)
 	if err != nil {
 		fd.Close()
 		return nil, fmt.Errorf("%s: %w", op, err)
@@ -83,7 +90,13 @@ func main() {
 
 	// для отправки
 	go func() {
-
+		for frame := range ether.Ch {
+			_, err := fd.Write(frame)
+			if err != nil {
+				log.Println("TAP write error:", err)
+				continue
+			}
+		}
 	}()
 
 	select {}

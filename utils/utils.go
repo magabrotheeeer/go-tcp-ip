@@ -5,6 +5,7 @@ import (
 	"net"
 )
 
+// возвращает список айпи для устройства
 func GetInterfaceIPs(name string) ([]net.IP, error) {
 	iface, err := net.InterfaceByName(name)
 	if err != nil {
@@ -33,6 +34,7 @@ func GetInterfaceIPs(name string) ([]net.IP, error) {
 	return ips, nil
 }
 
+// проверяет айпи
 func IsMyIP(target [4]byte, myIPs []net.IP) bool {
 	for _, ip := range myIPs {
 		if len(ip) == 4 && ip[0] == target[0] && ip[1] == target[1] && ip[2] == target[2] && ip[3] == target[3] {
@@ -42,6 +44,7 @@ func IsMyIP(target [4]byte, myIPs []net.IP) bool {
 	return false
 }
 
+// проверяет является ли мак броудкастом
 func IsBroadcast(mac []byte) bool {
 	return bytes.Equal(mac, []byte{0xff, 0xff, 0xff, 0xff, 0xff, 0xff})
 }
