@@ -24,8 +24,8 @@ type Ethernet struct {
 }
 
 type EthernetFrame struct {
-	MacDst    [6]byte
-	MacSrc    [6]byte
+	DstMac    [6]byte
+	SrcMac    [6]byte
 	EtherType uint16
 	Payload   []byte // если меньше 46 байт, то используется поле-заполнитель для предотвращения коллизий
 }
@@ -51,8 +51,8 @@ func NewEthernetFrame(dst [6]byte, src [6]byte, protocol string, data []byte) Et
 	}
 
 	return EthernetFrame{
-		MacDst:    dst,
-		MacSrc:    src,
+		DstMac:    dst,
+		SrcMac:    src,
 		EtherType: pr,
 		Payload:   data,
 	}
@@ -64,8 +64,8 @@ func (ef *EthernetFrame) Marshal() []byte {
 
 	binary.BigEndian.PutUint16(buf, ef.EtherType)
 
-	frame = append(frame, ef.MacDst[:]...)
-	frame = append(frame, ef.MacSrc[:]...)
+	frame = append(frame, ef.DstMac[:]...)
+	frame = append(frame, ef.SrcMac[:]...)
 	frame = append(frame, buf...)
 
 	if len(ef.Payload) < 46 {
@@ -79,8 +79,8 @@ func (ef *EthernetFrame) Marshal() []byte {
 func Unmarshal(frame []byte) EthernetFrame {
 	var ef EthernetFrame
 
-	copy(ef.MacDst[:], frame[0:6])
-	copy(ef.MacSrc[:], frame[6:12])
+	copy(ef.DstMac[:], frame[0:6])
+	copy(ef.SrcMac[:], frame[6:12])
 
 	buf := frame[12:14]
 	ef.EtherType = binary.BigEndian.Uint16(buf)
@@ -100,7 +100,7 @@ func Padding(data *[]byte) {
 func (e *Ethernet) HandleFrame(frame []byte) {
 	etherframe := Unmarshal(frame)
 
-	if !bytes.Equal(e.MyMAC, etherframe.MacDst[:]) && !utils.IsBroadcast(etherframe.MacDst[:]) {
+	if !bytes.Equal(e.MyMAC, etherframe.DstMac[:]) && !utils.IsBroadcast(etherframe.DstMac[:]) {
 		return
 	}
 
@@ -114,9 +114,10 @@ func (e *Ethernet) HandleFrame(frame []byte) {
 		newArp, err := arp.HandleARP(arpPack, e.Cache)
 
 		if newArp != nil {
-			resData := newArp.Marshal()
-
-			e.Ch <- resData
+			respondArp := newArp.Marshal()
+			nef := NewEthernetFrame(newArp.DstMac, newArp.SrcMac, "arp", respondArp)	
+			respondFrame := nef.Marshal()
+			e.Ch <- respondFrame
 		}
 
 	case IPv4:
